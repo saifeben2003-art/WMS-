@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +7,245 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ==================== HEAVY LIFT WMS SCHEMA ====================
+
+model CargoItem {
+  id            String   @id @default(cuid())
+  cargoCode     String   @unique
+  description   String
+  
+  // Physical characteristics (critical for heavy lift)
+  weight        Float    // kg
+  length        Float    // meters
+  width         Float    // meters
+  height        Float    // meters
+  volume        Float?   // CBM (calculated)
+  
+  // Heavy lift specific
+   liftCategory  String   @default("STANDARD") // STANDARD, HEAVY_LIFT, OVERSIZE, PROJECT_CARGO
+  centerOfGravity String? // COG position description
+  liftingPoints  Int?    // number of lifting lugs/points
+  specialHandling String? // e.g., "Temperature controlled", "Fragile", "Top heavy"
+  
+  // Classification
+  hazardClass   String?  // IMDG/UN hazard class
+  commodityType  String   @default("GENERAL") // GENERAL, MACHINERY, STEEL, EQUIPMENT, MODULE
+  
+  // Status & location
+  status        String   @default("IN_TRANSIT") // IN_TRANSIT, RECEIVED, IN_YARD, IN_WAREHOUSE, DISPATCHED, DELIVERED
+  locationId    String?
+  projectId     String?
+  
+  // Client & reference
+  clientName    String?
+  poReference   String?  // Purchase Order
+  blReference   String?  // Bill of Lading
+  
+  // Dimensions for transport planning
+  transportWeight Float?  // with packing/cradle
+  transportLength Float?
+  transportWidth  Float?
+  transportHeight Float?
+  
+  // Timestamps
+  receivedAt    DateTime?
+  dispatchedAt  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  location      Location? @relation(fields: [locationId], references: [id])
+  project       Project?  @relation(fields: [projectId], references: [id])
+  movements     Movement[]
+  
+  @@index([status])
+  @@index([locationId])
+  @@index([projectId])
+  @@index([cargoCode])
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Location {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  type        String   @default("YARD") // YARD, WAREHOUSE, OPEN_AREA, STAGING, BERTH
+  zone        String?  // Zone A, B, C etc.
+  
+  // Capacity (for heavy lift)
+  maxWeight   Float?   // max ground bearing capacity kg/m2
+  maxDimension String?  // max item dimensions
+  area        Float?   // sqm
+  
+  // Status
+  isActive    Boolean  @default(true)
+  currentLoad Int      @default(0) // number of items currently stored
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  cargoItems  CargoItem[]
+  movementsFrom Movement[] @relation("MovementFrom")
+  movementsTo   Movement[] @relation("MovementTo")
+  
+  @@index([type])
+  @@index([zone])
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  projectCode   String   @unique
+  name          String
+  description   String?
+  
+  clientName    String
+  clientContact String?
+  
+  // Project cargo specifics
+  destination   String?
+  shippingLine  String?
+  vesselName    String?
+  etd           DateTime? // Estimated Time of Departure
+  eta           DateTime? // Estimated Time of Arrival
+  
+  // Status
+  status        String   @default("PLANNED") // PLANNED, RECEIVING, IN_STORAGE, STAGING, LOADED, SHIPPED, COMPLETED
+  
+  // Totals
+  totalItems   Int      @default(0)
+  totalWeight  Float    @default(0)
+  totalVolume  Float    @default(0)
+  
+  // SAP reference
+  sapProjectId String?
+  sapContract  String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  cargoItems   CargoItem[]
+  
+  @@index([status])
+  @@index([clientName])
+}
+
+model Equipment {
+  id            String   @id @default(cuid())
+  equipmentCode String   @unique
+  name          String
+  type          String   // CRANE, FORKLIFT, SPREADER_BAR, SLING, SHACKLE, BEAM, JACK, ROLLER
+  
+  // Specifications
+  capacity      Float?   // SWL in tons
+  manufacturer  String?
+  model         String?
+  serialNumber  String?
+  
+  // Status
+  status        String   @default("AVAILABLE") // AVAILABLE, IN_USE, MAINTENANCE, OUT_OF_SERVICE
+  currentLocation String?
+  lastInspection DateTime?
+  nextInspection DateTime?
+  
+  // Certifications
+  certificationId String?
+  certExpiry    DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([type])
+  @@index([status])
+}
+
+model Movement {
+  id            String   @id @default(cuid())
+  movementRef   String   // auto-generated ref like MOV-2024-001
+  
+  cargoItemId   String
+  cargoCode     String
+  
+  type          String   // RECEIVE, MOVE, DISPATCH, INSPECT
+  
+  fromLocationId String?
+  toLocationId   String?
+  
+  // Heavy lift specific
+  equipmentUsed  String?  // comma-separated equipment IDs
+  liftMethod     String?  // DIRECT, SPREADER_BAR, BEAM, MULTIPOINT
+  operatorName   String?
+  
+  // Weights at movement time
+  actualWeight   Float?
+  
+  // Notes
+  remarks        String?
+  
+  // Audit
+  performedBy    String   @default("SYSTEM")
+  createdAt      DateTime @default(now())
+  
+  cargoItem      CargoItem @relation(fields: [cargoItemId], references: [id])
+  fromLocation    Location? @relation("MovementFrom", fields: [fromLocationId], references: [id])
+  toLocation      Location? @relation("MovementTo", fields: [toLocationId], references: [id])
+  
+  @@index([cargoItemId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([movementRef])
+}
+
+model SAPIntegration {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  
+  // Connection config
+  endpoint      String
+  authMethod    String   @default("API_KEY") // API_KEY, OAUTH, BASIC
+  apiKey        String?
+  username      String?
+  
+  // SAP specific
+  sapSystemId   String?
+  sapClient     String?
+  protocol      String   @default("ODATA") // ODATA, RFC, IDOC, REST
+  
+  // Status
+  isActive      Boolean  @default(true)
+  lastSync      DateTime?
+  
+  // Event config (JSON)
+  eventMappings String? // JSON: {"RECEIVED": "/api/inbound", "DISPATCHED": "/api/outbound"}
+  fieldMappings  String? // JSON: field mapping config
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([isActive])
+}
+
+model SyncLog {
+  id            String   @id @default(cuid())
+  integrationId String
+  eventType     String   // RECEIVED, DISPATCHED, MOVEMENT, INVENTORY_UPDATE
+  direction     String   // OUTBOUND, INBOUND
+  
+  payload       String   // JSON payload sent/received
+  status        String   @default("PENDING") // PENDING, SENT, SUCCESS, FAILED, RETRYING
+  responseCode  Int?
+  responseBody  String?
+  errorMessage  String?
+  
+  retryCount    Int      @default(0)
+  maxRetries    Int      @default(3)
+  
+  // Idempotency
+  idempotencyKey String  @unique
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([integrationId])
+  @@index([status])
+  @@index([eventType])
+  @@index([direction])
+  @@index([createdAt])
 }
