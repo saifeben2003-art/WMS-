@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Box, LayoutDashboard, Package, FolderKanban, MapPin, Wrench, ArrowLeftRight, Plug, Menu, ChevronLeft, ChevronRight, LogOut, User, Globe } from 'lucide-react';
+import { Box, LayoutDashboard, Package, FolderKanban, MapPin, Wrench, ArrowLeftRight, Users, Plug, Menu, ChevronLeft, ChevronRight, LogOut, User, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -19,6 +19,7 @@ interface SidebarProps {
   language: Language;
   user: AuthUser | null;
   onLogout: () => void;
+  onSetLanguage: (lang: Language) => void;
 }
 
 interface NavItem {
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { page: 'locations', labelKey: 'nav.locations', icon: MapPin },
   { page: 'equipment', labelKey: 'nav.equipment', icon: Wrench },
   { page: 'movements', labelKey: 'nav.movements', icon: ArrowLeftRight },
+  { page: 'users', labelKey: 'nav.users', icon: Users },
   { page: 'integration', labelKey: 'nav.integration', icon: Plug },
 ];
 
@@ -172,7 +174,7 @@ function UserMenuSection({ user, t, language, onLogout, onSetLanguage }: {
   );
 }
 
-export function AppSidebar({ activePage, onPageChange, t, language, user, onLogout }: SidebarProps) {
+export function AppSidebar({ activePage, onPageChange, t, language, user, onLogout, onSetLanguage }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const rtl = isRTL(language);
 
@@ -221,7 +223,7 @@ export function AppSidebar({ activePage, onPageChange, t, language, user, onLogo
                 t={t}
                 language={language}
                 onLogout={onLogout}
-                onSetLanguage={() => {}}
+                onSetLanguage={onSetLanguage}
               />
             )}
             <div className="border-t border-slate-800 p-4">
@@ -276,7 +278,7 @@ export function AppSidebar({ activePage, onPageChange, t, language, user, onLogo
             t={t}
             language={language}
             onLogout={onLogout}
-            onSetLanguage={() => {}}
+            onSetLanguage={onSetLanguage}
           />
         )}
 

@@ -31,11 +31,11 @@ export function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
     setError('');
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError(t(language, 'auth.passwordMinLength'));
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t(language, 'auth.passwordMismatch'));
       return;
     }
 
@@ -43,7 +43,7 @@ export function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
     try {
       await register(name, email, password, language);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : t(language, 'auth.registerFailed'));
     } finally {
       setLoading(false);
     }
@@ -140,7 +140,7 @@ export function RegisterPage({ onSwitchToLogin }: RegisterPageProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors"
+                  className={cn('absolute top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors', rtl ? 'left-3' : 'right-3')}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

@@ -140,4 +140,4 @@ export interface DashboardStats {
   projectProgress: { name: string; total: number; received: number; status: string }[];
 }
 
-export type WmsPage = 'dashboard' | 'cargo' | 'projects' | 'locations' | 'equipment' | 'movements' | 'integration';
+export type WmsPage = 'dashboard' | 'cargo' | 'projects' | 'locations' | 'equipment' | 'movements' | 'users' | 'integration';

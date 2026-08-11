@@ -108,7 +108,7 @@ export function LoginPage({ onSwitchToRegister }: LoginPageProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors"
+                  className={cn('absolute top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors', rtl ? 'left-3' : 'right-3')}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

@@ -12,6 +12,7 @@ import { LocationsPage } from '@/components/wms/locations-page';
 import { EquipmentPage } from '@/components/wms/equipment-page';
 import { MovementsPage } from '@/components/wms/movements-page';
 import { IntegrationPage } from '@/components/wms/integration-page';
+import { UsersPage } from '@/components/wms/users-page';
 import { t as translate, isRTL, languageNames, languageList } from '@/lib/i18n';
 import type { Language } from '@/lib/i18n';
 import type { WmsPage } from '@/types/wms';
@@ -39,6 +40,7 @@ function WmsShell() {
   const { user, loading, language, setLanguage, logout } = useAuth();
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [activePage, setActivePage] = useState<WmsPage>('dashboard');
+  // Seed database on first mount (creates admin user + demo data) — runs before login
   const [seeded, setSeeded] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
 
@@ -50,14 +52,14 @@ function WmsShell() {
     return user ? 'app' as const : 'login' as const;
   }, [loading, user]);
 
+  // Run seed immediately on mount (before auth check) so admin user exists
   useEffect(() => {
-    if (view !== 'app') return;
     let mounted = true;
     fetch('/api/seed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force: true }) })
       .then(() => { if (mounted) setSeeded(true); })
       .catch(() => { if (mounted) setSeeded(true); });
     return () => { mounted = false; };
-  }, [view]);
+  }, []);
 
   useEffect(() => {
     if (rtl) {
@@ -74,15 +76,17 @@ function WmsShell() {
   };
 
   const renderPage = () => {
+    const props = { t: scopedT, language, formatNum: (v: number) => formatNum(v, language) };
     switch (activePage) {
-      case 'dashboard': return <DashboardPage />;
-      case 'cargo': return <CargoPage />;
-      case 'projects': return <ProjectsPage />;
-      case 'locations': return <LocationsPage />;
-      case 'equipment': return <EquipmentPage />;
-      case 'movements': return <MovementsPage />;
-      case 'integration': return <IntegrationPage />;
-      default: return <DashboardPage />;
+      case 'dashboard': return <DashboardPage {...props} />;
+      case 'cargo': return <CargoPage {...props} />;
+      case 'projects': return <ProjectsPage {...props} />;
+      case 'locations': return <LocationsPage {...props} />;
+      case 'equipment': return <EquipmentPage {...props} />;
+      case 'movements': return <MovementsPage {...props} />;
+      case 'users': return <UsersPage {...props} />;
+      case 'integration': return <IntegrationPage {...props} />;
+      default: return <DashboardPage {...props} />;
     }
   };
 
@@ -91,7 +95,7 @@ function WmsShell() {
       <div className="min-h-screen flex items-center justify-center bg-[#0a0c14]">
         <div className="text-center">
           <div className="h-8 w-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-slate-500">Loading...</p>
+          <p className="text-sm text-slate-500">{scopedT('common.loading')}</p>
         </div>
       </div>
     );
@@ -111,6 +115,7 @@ function WmsShell() {
     locations: scopedT('nav.locations'),
     equipment: scopedT('nav.equipment'),
     movements: scopedT('nav.movements'),
+    users: scopedT('nav.users'),
     integration: scopedT('nav.integration'),
   };
 
@@ -123,6 +128,7 @@ function WmsShell() {
         language={language}
         user={user}
         onLogout={handleLogout}
+        onSetLanguage={setLanguage}
       />
 
       <main className={cn('flex-1 min-h-screen transition-all duration-300', rtl ? 'lg:mr-64' : 'lg:ml-64')}>
@@ -169,7 +175,7 @@ function WmsShell() {
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center">
                 <div className="h-8 w-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm text-slate-400">Initializing WMS...</p>
+                <p className="text-sm text-slate-400">{scopedT('common.initializing')}</p>
               </div>
             </div>
           )}
