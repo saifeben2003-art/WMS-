@@ -52,3 +52,11 @@ prompt
 server.log
 # Skills directory
 /skills/
+# WMS Database
+db/*.db
+
+# Tool results
+tool-results/
+
+# Screenshots
+*.png
