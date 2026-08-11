@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import type { Language } from '@/lib/i18n';
 
 export interface AuthUser {
@@ -12,7 +13,7 @@ export interface AuthUser {
   language: string;
   isActive: boolean;
   lastLogin?: string | null;
-  createdAt: string;
+  createdAt?: string;
 }
 
 interface AuthContextType {
@@ -31,100 +32,63 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const STORAGE_KEY = 'cl-wms-language';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [language, setLanguageState] = useState<Language>('en');
+  const { data: session, status } = useSession();
 
-  // Initialize language from localStorage
-  useEffect(() => {
+  // Initialize language from localStorage via lazy initializer (SSR-safe, no useEffect+setState)
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window === 'undefined') return 'en';
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved && ['ar', 'en', 'fr', 'hi', 'ur', 'ms', 'zh'].includes(saved)) {
-        setLanguageState(saved as Language);
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
+      if (saved && ['ar', 'en'].includes(saved)) return saved as Language;
+    } catch { /* */ }
+    return 'en';
+  });
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
-    try {
-      localStorage.setItem(STORAGE_KEY, lang);
-    } catch {
-      // Ignore
-    }
+    try { localStorage.setItem(STORAGE_KEY, lang); } catch { /* */ }
   }, []);
 
-  const refreshUser = useCallback(async () => {
-    try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user as AuthUser);
-        // Sync language from user profile
-        if (data.user?.language) {
-          setLanguageState(data.user.language as Language);
-        }
-      } else {
-        setUser(null);
-      }
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
+  // Derive user from session — no setState
+  const user: AuthUser | null = useMemo(() => {
+    if (status === 'authenticated' && session?.user) {
+      return {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        role: session.user.role,
+        avatar: session.user.image,
+        language: (session.user as Record<string, unknown>).language as string || 'en',
+        isActive: true,
+        lastLogin: (session.user as Record<string, unknown>).lastLogin as string | null,
+      };
     }
-  }, []);
+    return null;
+  }, [session, status]);
 
-  // Check auth on mount
-  useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
+  const loading = status === 'loading';
+  const refreshUser = useCallback(async () => { /* NextAuth JWT auto-refreshes */ }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || 'Login failed');
-    }
-    const data = await res.json();
-    setUser(data.user as AuthUser);
-    if (data.user?.language) {
-      setLanguageState(data.user.language as Language);
-    }
+    const result = await signIn('credentials', { email, password, redirect: false });
+    if (result?.error) throw new Error('Invalid email or password');
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string, lang?: string) => {
     const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password, language: lang || language }),
     });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || 'Registration failed');
-    }
-    const data = await res.json();
-    setUser(data.user as AuthUser);
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Registration failed'); }
+    await signIn('credentials', { email, password, redirect: false });
   }, [language]);
 
   const logout = useCallback(async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch {
-      // Ignore
-    }
-    setUser(null);
+    await signOut({ redirect: false });
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{ user, loading, language, setLanguage, login, register, logout, refreshUser }}
-    >
+    <AuthContext.Provider value={{ user, loading, language, setLanguage, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -132,8 +96,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

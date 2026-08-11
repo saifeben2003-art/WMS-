@@ -37,12 +37,12 @@ interface UserListResponse {
   totalPages: number;
 }
 
-const ROLES = ['ADMIN', 'SUPERVISOR', 'OPERATOR', 'VIEWER'] as const;
+const ROLES = ['ADMIN', 'MANAGER', 'STAFF', 'VIEWER'] as const;
 
 const roleStyles: Record<string, string> = {
   ADMIN: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  SUPERVISOR: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
-  OPERATOR: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+  MANAGER: 'text-teal-400 bg-teal-500/10 border-teal-500/20',
+  STAFF: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
   VIEWER: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
 };
 

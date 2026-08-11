@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { authGuard } from '@/lib/auth';
 
 // GET /api/locations/[id] - Get single location
 export async function GET(
@@ -84,11 +85,14 @@ export async function PUT(
   }
 }
 
-// DELETE /api/locations/[id] - Delete location
+// DELETE /api/locations/[id] - Delete location (ADMIN/MANAGER only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = await authGuard(request, ['ADMIN', 'MANAGER']);
+  if (guard instanceof NextResponse) return guard;
+
   try {
     const { id } = await params;
 

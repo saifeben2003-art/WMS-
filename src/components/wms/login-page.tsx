@@ -7,7 +7,7 @@ import type { Language } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, EyeOff, ArrowRight, Globe } from 'lucide-react';
+import { Loader2, Eye, EyeOff, ArrowRight, Globe, Search, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LoginPageProps {
@@ -21,8 +21,32 @@ export function LoginPage({ onSwitchToRegister }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [trackCode, setTrackCode] = useState('');
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackResult, setTrackResult] = useState<Record<string, unknown> | null>(null);
+  const [trackError, setTrackError] = useState('');
 
   const rtl = isRTL(language);
+
+  const handleTrack = async () => {
+    if (!trackCode.trim()) return;
+    setTrackLoading(true);
+    setTrackError('');
+    setTrackResult(null);
+    try {
+      const res = await fetch(`/api/track/${trackCode.trim()}`);
+      const data = await res.json();
+      if (res.ok) {
+        setTrackResult(data.data);
+      } else {
+        setTrackError(data.error || 'Not found');
+      }
+    } catch {
+      setTrackError('Failed to search');
+    } finally {
+      setTrackLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,6 +184,63 @@ export function LoginPage({ onSwitchToRegister }: LoginPageProps) {
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Track Cargo — public, no login required */}
+        <div className="mt-6 rounded-2xl border border-slate-800/60 bg-[#12141f]/90 backdrop-blur-xl p-6 shadow-2xl shadow-black/30">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-4 w-4 text-amber-400" />
+            <h3 className="text-sm font-semibold text-white">{t(language, 'track.title')}</h3>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={trackCode}
+              onChange={(e) => setTrackCode(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleTrack()}
+              placeholder={t(language, 'track.searchPlaceholder')}
+              className="h-10 bg-slate-900/60 border-slate-700/50 text-white placeholder:text-slate-500 text-sm focus:border-amber-500/50 focus:ring-amber-500/20"
+              dir="ltr"
+            />
+            <Button
+              onClick={handleTrack}
+              disabled={trackLoading || !trackCode.trim()}
+              variant="outline"
+              className="h-10 px-4 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white shrink-0"
+            >
+              {trackLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          {trackError && (
+            <p className="mt-3 text-xs text-red-400 text-center">{trackError}</p>
+          )}
+
+          {trackResult && (
+            <div className="mt-3 rounded-lg bg-slate-800/50 border border-slate-700/50 p-3 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">{t(language, 'track.cargoCode')}</span>
+                <span className="text-slate-200 font-mono">{String(trackResult.cargoCode)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">{t(language, 'track.description')}</span>
+                <span className="text-slate-200 text-right max-w-[60%] truncate">{String(trackResult.description)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">{t(language, 'track.status')}</span>
+                <span className="text-emerald-400 font-medium">{String(trackResult.status)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">{t(language, 'track.weight')}</span>
+                <span className="text-slate-200">{Number(trackResult.weight).toLocaleString()} kg</span>
+              </div>
+              {trackResult.location && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">{t(language, 'track.location')}</span>
+                  <span className="text-slate-200">{(trackResult.location as Record<string, string>).name}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { SessionProvider } from 'next-auth/react';
 import { AuthProvider, useAuth } from '@/components/wms/auth-context';
 import { LoginPage } from '@/components/wms/login-page';
 import { RegisterPage } from '@/components/wms/register-page';
@@ -23,11 +24,6 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 function getLocale(language: Language): string {
   switch (language) {
     case 'ar': return 'ar-SA';
-    case 'zh': return 'zh-CN';
-    case 'hi': return 'hi-IN';
-    case 'ur': return 'ur-PK';
-    case 'ms': return 'ms-MY';
-    case 'fr': return 'fr-FR';
     default: return 'en-US';
   }
 }
@@ -40,17 +36,11 @@ function WmsShell() {
   const { user, loading, language, setLanguage, logout } = useAuth();
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [activePage, setActivePage] = useState<WmsPage>('dashboard');
-  // Seed database on first mount (creates admin user + demo data) — runs before login
   const [seeded, setSeeded] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
 
   const scopedT = (key: string, params?: Record<string, string | number>) => translate(language, key, params);
   const rtl = isRTL(language);
-
-  const view = useMemo(() => {
-    if (loading) return 'login' as const;
-    return user ? 'app' as const : 'login' as const;
-  }, [loading, user]);
 
   // Run seed immediately on mount (before auth check) so admin user exists
   useEffect(() => {
@@ -194,8 +184,10 @@ function WmsShell() {
 
 export default function WmsApp() {
   return (
-    <AuthProvider>
-      <WmsShell />
-    </AuthProvider>
+    <SessionProvider>
+      <AuthProvider>
+        <WmsShell />
+      </AuthProvider>
+    </SessionProvider>
   );
 }

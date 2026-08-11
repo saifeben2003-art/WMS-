@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { authGuard } from '@/lib/auth';
 
 // GET /api/users/[id] - Get single user (no password)
 export async function GET(
@@ -82,11 +83,14 @@ export async function PUT(
   }
 }
 
-// DELETE /api/users/[id] - Deactivate user (set isActive=false)
+// DELETE /api/users/[id] - Deactivate user (ADMIN only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const guard = await authGuard(request, ['ADMIN']);
+  if (guard instanceof NextResponse) return guard;
+
   try {
     const { id } = await params;
 

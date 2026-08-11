@@ -16,7 +16,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import type { CargoItem, LiftCategory, CommodityType, CargoStatus, Location, Project } from '@/types/wms';
+import type { CargoItem, LiftCategory, CommodityType, CargoStatus, Location, Project, Movement } from '@/types/wms';
+import { CargoTimeline } from './cargo-timeline';
 
 interface Props {
   t: (key: string, params?: Record<string, string | number>) => string;
@@ -139,6 +140,20 @@ export function CargoPage({ t, formatNum }: Props) {
     } catch { toast.error(t('cargo.failedDelete')); }
   };
 
+  // Fetch full cargo details (with movements) for the timeline
+  const handleView = async (item: CargoItem) => {
+    setViewing(item);
+    try {
+      const res = await fetch(`/api/cargo/${item.id}`);
+      if (res.ok) {
+        const { data } = await res.json();
+        setViewing(data as CargoItem);
+      }
+    } catch {
+      // Keep the list item data if fetch fails
+    }
+  };
+
   const openEdit = (item: CargoItem) => {
     setEditing(item);
     setForm({
@@ -237,7 +252,7 @@ export function CargoPage({ t, formatNum }: Props) {
                         <td className="py-3 px-4 text-xs text-slate-400 hidden xl:table-cell max-w-[120px] truncate">{item.project?.name || '—'}</td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-cyan-400" onClick={() => setViewing(item)}><Eye className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-cyan-400" onClick={() => handleView(item)}><Eye className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-amber-400" onClick={() => openEdit(item)}><Pencil className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-red-400" onClick={() => setDeleting(item)}><Trash2 className="h-3.5 w-3.5" /></Button>
                           </div>
@@ -301,6 +316,13 @@ export function CargoPage({ t, formatNum }: Props) {
               <div><span className="text-slate-500">{t('cargo.cog')}:</span><p className="text-slate-200 mt-0.5">{viewing.centerOfGravity || '—'}</p></div>
               <div><span className="text-slate-500">{t('cargo.liftPoints')}:</span><p className="text-slate-200 mt-0.5">{viewing.liftingPoints ?? '—'}</p></div>
               {viewing.specialHandling && (<div className="sm:col-span-2"><span className="text-slate-500">{t('cargo.specialHandling')}:</span><p className="text-slate-200 mt-0.5 bg-slate-800 rounded-lg p-3 text-xs">{viewing.specialHandling}</p></div>)}
+              {/* Movement Timeline */}
+              {viewing.movements && viewing.movements.length > 0 && (
+                <div className="sm:col-span-2 pt-2 border-t border-slate-800">
+                  <h3 className="text-xs font-semibold text-slate-400 mb-3">Movement History</h3>
+                  <CargoTimeline movements={viewing.movements} />
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
