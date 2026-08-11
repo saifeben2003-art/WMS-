@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -229,8 +229,8 @@ model SAPIntegration {
   lastSync      DateTime?
   
   // Event config (JSON)
-  eventMappings String? // JSON: {"RECEIVED": "/api/inbound", "DISPATCHED": "/api/outbound"}
-  fieldMappings  String? // JSON: field mapping config
+  eventMappings Json? // {"RECEIVED": "/api/inbound", "DISPATCHED": "/api/outbound"}
+  fieldMappings  Json? // field mapping config
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -244,7 +244,7 @@ model SyncLog {
   eventType     String   // RECEIVED, DISPATCHED, MOVEMENT, INVENTORY_UPDATE
   direction     String   // OUTBOUND, INBOUND
   
-  payload       String   // JSON payload sent/received
+  payload       Json     // JSON payload sent/received
   status        String   @default("PENDING") // PENDING, SENT, SUCCESS, FAILED, RETRYING
   responseCode  Int?
   responseBody  String?
