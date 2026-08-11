@@ -1,41 +1,32 @@
 import { NextRequest } from 'next/server';
+import bcrypt from 'bcryptjs';
 
 const TOKEN_SECRET = 'cl-wms-secret-key-2024';
 
-// ==================== Password Hashing (SHA-256 with salt) ====================
+// ==================== Password Hashing (bcryptjs) ====================
+// bcrypt is the industry standard for password hashing.
+// It uses Blowfish cipher with a cost factor (work factor) that makes it
+// computationally expensive and resistant to brute-force / GPU attacks.
+// saltRounds=12 means ~4096 iterations — recommended minimum for 2024+.
 
-function bufferToHex(buffer: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function generateSalt(length: number = 32): string {
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  return bufferToHex(array.buffer);
-}
+const BCRYPT_ROUNDS = 12;
 
 export async function hashPassword(password: string): Promise<string> {
-  const salt = generateSalt(32);
-  const encoder = new TextEncoder();
-  const data = encoder.encode(salt + password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hash = bufferToHex(hashBuffer);
-  return `${salt}:${hash}`;
+  // bcryptjs.genSalt internally generates a cryptographically secure
+  // random 128-bit salt and embeds it into the resulting hash string.
+  const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+  return hash; // Format: $2a$12$<22-char-salt><31-char-hash>
 }
 
 export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const [salt, expectedHash] = storedHash.split(':');
-  if (!salt || !expectedHash) return false;
-  const encoder = new TextEncoder();
-  const data = encoder.encode(salt + password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hash = bufferToHex(hashBuffer);
-  return hash === expectedHash;
+  try {
+    return await bcrypt.compare(password, storedHash);
+  } catch {
+    return false;
+  }
 }
 
-// ==================== Token Management (SHA-256 signed) ====================
+// ==================== Token Management (SHA-256 HMAC-style signed) ====================
 
 function base64urlEncode(data: string): string {
   return btoa(data).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -54,8 +45,10 @@ export async function generateToken(payload: object): Promise<string> {
 
   const encoder = new TextEncoder();
   const data = encoder.encode(payloadB64 + '.' + TOKEN_SECRET);
-  const sigBuffer = await crypto.subtle.digest('SHA-256', data);
-  const signature = bufferToHex(sigBuffer);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const signature = Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 
   return `${payloadB64}.${signature}`;
 }
@@ -67,18 +60,18 @@ export async function verifyToken(token: string): Promise<object | null> {
 
     const [payloadB64, signature] = parts;
 
-    // Re-compute signature
     const encoder = new TextEncoder();
     const data = encoder.encode(payloadB64 + '.' + TOKEN_SECRET);
-    const sigBuffer = await crypto.subtle.digest('SHA-256', data);
-    const expectedSig = bufferToHex(sigBuffer);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const expectedSig = Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 
     if (signature !== expectedSig) return null;
 
     const payloadStr = base64urlDecode(payloadB64);
     const payload = JSON.parse(payloadStr);
 
-    // Check expiry
     if (payload.exp && Date.now() > payload.exp) return null;
 
     return payload;
