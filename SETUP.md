@@ -26,7 +26,7 @@ On Vercel:
 1. Go to your project → **Settings** → **Environment Variables**
 2. Add:
    - `DATABASE_URL` = your PostgreSQL connection string from Step 1
-   - `TOKEN_SECRET` = a random string (generate with `openssl rand -base64 32`)
+   - `NEXTAUTH_SECRET` = a random string (generate with `openssl rand -base64 32`)
    - `NEXTAUTH_URL` = your Vercel URL (e.g. `https://my-wms.vercel.app`)
 
 Locally:
@@ -41,14 +41,11 @@ Locally:
 
 **Locally:**
 ```bash
-# Generate migration from schema changes
-npx prisma migrate dev --name init
-
-# Or push schema directly (dev only, no migration file)
-npx prisma db push
+# Push schema directly (dev only, no migration file)
+bun run db:push
 
 # Regenerate Prisma Client
-npx prisma generate
+bun run db:generate
 ```
 
 ---
@@ -64,14 +61,6 @@ curl -X POST http://localhost:3000/api/seed \
 ```
 
 Default admin account: `admin@combilift.com` / `Admin@2024`
-
----
-
-
-
-```bash
-```
-
 
 ---
 
