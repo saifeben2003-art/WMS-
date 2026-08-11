@@ -24,3 +24,78 @@ Stage Summary:
 - Professional dark UI with Combi Lift branding
 - All CRUD operations functional
 - Seed data demonstrates Middle East heavy lift operations context
+
+---
+Task ID: 11-a
+Agent: Main Agent
+Task: Authentication system and internationalization (i18n) for Heavy Lift WMS
+
+Work Log:
+- Added User model to Prisma schema (id, email, passwordHash, name, role, avatar, language, isActive, lastLogin, timestamps)
+- Pushed schema to SQLite database with `bun run db:push`
+- Created `src/lib/auth.ts` — auth helper library with SHA-256 salted password hashing (Web Crypto API SubtleCrypto), SHA-256 signed token generation/verification, base64url encoding, and `getAuthUser()` request cookie helper
+- Created 4 auth API routes:
+  - `POST /api/auth/register` — validates email/password/name, checks duplicates, hashes password, creates user, sets httpOnly cookie
+  - `POST /api/auth/login` — validates credentials, verifies hash, generates signed token, sets cookie, updates lastLogin
+  - `GET /api/auth/me` — reads token from cookie, verifies signature + expiry, returns user from DB
+  - `POST /api/auth/logout` — clears token cookie
+- Updated seed route (`/api/seed`) to create admin user (admin@combilift.com / Admin@2024 / ADMIN role / Arabic language) if no admin exists
+- Created `src/lib/i18n.ts` — comprehensive i18n system:
+  - 7 languages: Arabic (ar), English (en), French (fr), Hindi (hi), Urdu (ur), Malay (ms), Chinese (zh)
+  - All translation keys covered: nav (11), common (17), dashboard (16), cargo (28), projects (2), cargo.commodityType (5), locations (7), equipment (13), movements (5), integration (2), auth (13), roles (4)
+  - Professional-quality Arabic translations (natural WMS terminology)
+  - Exports: `translations`, `Language` type, `languageNames`, `languageList` with flag emojis, `t()` function with parameter interpolation, `isRTL()` helper
+- Created `src/components/wms/auth-context.tsx` — React context provider:
+  - Checks auth on mount via `/api/auth/me`
+  - Provides: user, loading, login(), register(), logout(), refreshUser(), language, setLanguage()
+  - Persists language preference in localStorage
+  - Exports `useAuth()` hook and `AuthUser` type
+- Created `src/components/wms/login-page.tsx` — dark-themed login form:
+  - CL WMS logo/branding, email + password fields, show/hide password toggle
+  - Amber gradient sign-in button, error display, loading spinner
+  - Language selector dropdown at bottom, RTL support for Arabic/Urdu
+  - Link to switch to register page
+- Created `src/components/wms/register-page.tsx` — matching registration form:
+  - Name, email, password, confirm password fields
+  - Client-side validation (min 8 chars, password match)
+  - Language selector dropdown with flag emojis
+  - Link to switch to login page
+- All files pass `bun run lint` with zero errors
+- Dev server compiling successfully (200 responses)
+
+Stage Summary:
+- Complete authentication system with 4 API routes and secure password hashing
+- Full i18n support for 7 languages with professional translations
+- Auth context with login/register/logout flows
+- Login and register page components with RTL support
+- Admin user seeded automatically (admin@combilift.com / Admin@2024)
+
+---
+Task ID: 11-b
+Agent: Main Agent
+Task: Wire together auth + i18n + all WMS page components with professional polish
+
+Work Log:
+- Fixed `getNestedValue()` in i18n.ts to handle flat dot-keys (e.g., `cargo.status.IN_YARD`) by trying remaining key segments when nested traversal fails
+- Added ~80 new i18n keys to both Arabic (ar) and English (en) blocks covering: common (23 new), dashboard (7 new), cargo (18 new), projects (24 new including nested form), locations (10 new with nested form), equipment (15 new with nested form), movements (10 new with nested form), integration (24 new)
+- Rewrote `src/app/page.tsx`: wrapped in `<AuthProvider>`, login/register/app view state machine, RTL `dir` attribute on `<html>`, language-aware number formatting via `toLocaleString()`, header globe icon language switcher popover, fade-in page transitions with `animate-in fade-in duration-200`, updated footer with current language name
+- Rewrote `src/components/wms/app-sidebar.tsx`: accepts `t`, `language`, `user`, `onLogout` props; all nav labels use `t()` calls; added user menu section with avatar (first letter + name), role badge, language selector dropdown, logout button; RTL-aware sidebar positioning (`left-0`/`right-0`); collapse button text uses i18n
+- Updated all 7 WMS page components (dashboard, cargo, projects, locations, equipment, movements, integration) to accept `t` and `formatNum` props and replace ALL hardcoded English text with `t()` calls
+- Dashboard: KPI labels, status/category section titles, movement type badges, empty states with icons
+- Cargo: all table headers, filter placeholders, form labels, dialog titles, button text, status/category display names, pagination, delete confirmation, toast messages
+- Projects: tab labels, card text, form labels, button text, status tab names, empty states with icons
+- Locations: type filter buttons, form labels, card text, status labels, empty states
+- Equipment: table headers, filter labels, form labels, certification tooltips, empty states
+- Movements: table headers, form labels, button text, filter labels, empty states
+- Integration: all section headers, labels, button text, table headers
+- Added professional empty states with icon + message + description for all pages (using lucide-react icons)
+- Language-aware number formatting: ar-SA, zh-CN, hi-IN, ur-PK, ms-MY, fr-FR, en-US
+- All files pass `bun run lint` with zero errors
+- Dev server compiling successfully (200 responses)
+
+Stage Summary:
+- Auth and i18n fully wired together — login/register → app flow works
+- All 7 WMS pages fully translated with i18n
+- Arabic translations verified and working (complete ar + en translations)
+- RTL layout support for Arabic and Urdu
+- Professional polish: empty states, fade transitions, language-aware formatting, user menu, header language indicator

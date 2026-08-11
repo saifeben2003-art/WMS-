@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { hashPassword } from '@/lib/auth';
 
 // POST /api/seed - Seed realistic demo data for a Middle East heavy lift warehouse
 export async function POST(request: NextRequest) {
@@ -30,6 +31,22 @@ export async function POST(request: NextRequest) {
         db.equipment.deleteMany(),
         db.location.deleteMany(),
       ]);
+    }
+
+    // ==================== ADMIN USER ====================
+    const existingAdmin = await db.user.findFirst({ where: { role: "ADMIN" } });
+    if (!existingAdmin) {
+      const adminPasswordHash = await hashPassword("Admin@2024");
+      await db.user.create({
+        data: {
+          email: "admin@combilift.com",
+          passwordHash: adminPasswordHash,
+          name: "System Admin",
+          role: "ADMIN",
+          language: "ar",
+          isActive: true,
+        },
+      });
     }
 
     // ==================== LOCATIONS ====================
