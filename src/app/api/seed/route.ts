@@ -2,8 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 
-// POST /api/seed - Seed realistic demo data for a Middle East heavy lift warehouse
+// POST /api/seed - DISABLED in production to prevent data destruction.
+// In development only, this seeds realistic demo data.
 export async function POST(request: NextRequest) {
+  // ╔═══════════════════════════════════════════════════════════╗
+  // ║  HARD BLOCK: seed is completely disabled in production ║║
+  // ╚═══════════════════════════════════════════════════════════╝
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Seed endpoint is disabled in production.' },
+      { status: 403 }
+    );
+  }
+
   try {
     let forceReseed = false;
     try {
